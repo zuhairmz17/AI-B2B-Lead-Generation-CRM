@@ -1,0 +1,5 @@
+company,industry,employees,decision_maker,role,ai_need,lead_score,status
+ABC Tech,Software,200,John Smith,CTO,Support automation,90,New
+HealthCare Plus,Healthcare,500,Sarah Lee,Founder,Document processing,100,Qualified
+RetailMart,Retail,300,David Brown,Innovation Head,Demand forecasting,90,Contacted
+FinServe,Finance,1000,Michael King,AI Head,Fraud detection,100,Meeting Scheduled
