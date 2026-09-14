@@ -1,51 +1,42 @@
 import streamlit as st
 import pandas as pd
-import sqlite3
 from datetime import datetime
 
-DB = "leads.db"
-
-def init_db():
-    conn = sqlite3.connect(DB)
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS leads (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            company TEXT NOT NULL,
-            industry TEXT,
-            employees INTEGER,
-            decision_maker TEXT,
-            role TEXT,
-            ai_need TEXT,
-            lead_score INTEGER,
-            status TEXT DEFAULT 'New',
-            notes TEXT,
-            created_at TEXT
-        )
-    """)
-    conn.commit()
-    conn.close()
+# Initialize session state for leads database
+if "leads_data" not in st.session_state:
+    st.session_state.leads_data = pd.DataFrame(columns=[
+        "id", "company", "industry", "employees", "decision_maker", "role", 
+        "ai_need", "lead_score", "status", "notes", "created_at"
+    ])
+    st.session_state.next_id = 1
 
 def add_lead(data):
-    conn = sqlite3.connect(DB)
-    conn.execute("""INSERT INTO leads
-        (company, industry, employees, decision_maker, role, ai_need,
-         lead_score, status, notes, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-        (*data, datetime.now().strftime("%Y-%m-%d %H:%M")))
-    conn.commit()
-    conn.close()
+    """Add a lead to session state dataframe"""
+    new_row = pd.DataFrame([{
+        "id": st.session_state.next_id,
+        "company": data[0],
+        "industry": data[1],
+        "employees": data[2],
+        "decision_maker": data[3],
+        "role": data[4],
+        "ai_need": data[5],
+        "lead_score": data[6],
+        "status": data[7],
+        "notes": data[8],
+        "created_at": data[9]
+    }])
+    st.session_state.leads_data = pd.concat([st.session_state.leads_data, new_row], ignore_index=True)
+    st.session_state.next_id += 1
 
 def load_leads():
-    conn = sqlite3.connect(DB)
-    df = pd.read_sql_query("SELECT * FROM leads ORDER BY id DESC", conn)
-    conn.close()
-    return df
+    """Load all leads from session state"""
+    return st.session_state.leads_data.sort_values("id", ascending=False).reset_index(drop=True)
 
-def update_status(lead_id, status):
-    conn = sqlite3.connect(DB)
-    conn.execute("UPDATE leads SET status=? WHERE id=?", (status, lead_id))
-    conn.commit()
-    conn.close()
+def update_status(lead_id, new_status):
+    """Update status of a lead"""
+    mask = st.session_state.leads_data["id"] == lead_id
+    if mask.any():
+        st.session_state.leads_data.loc[mask, "status"] = new_status
 
 def score_lead(employees, role, ai_need):
     score = 0
@@ -87,7 +78,6 @@ Mahmood Zuhair
 AI Sales & Business Development
 """
 
-init_db()
 st.set_page_config(page_title="AI B2B Sales Assistant", page_icon="🤖", layout="wide")
 
 st.title("🤖 AI-Powered B2B Lead Generation & CRM Assistant")
@@ -135,8 +125,10 @@ elif menu == "Add Lead":
             st.error("Company name and decision maker are required.")
         else:
             score = score_lead(employees, role, ai_need)
-            add_lead((company, industry, employees, person, role, ai_need, score, "New", notes))
+            add_lead((company, industry, employees, person, role, ai_need, score, "New", notes, 
+                     datetime.now().strftime("%Y-%m-%d %H:%M")))
             st.success(f"Lead saved successfully. Lead score: {score}/100")
+            st.rerun()
 
 elif menu == "AI Use-Case Finder":
     st.subheader("💡 AI Business Use-Case Finder")
